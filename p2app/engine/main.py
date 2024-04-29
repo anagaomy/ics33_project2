@@ -67,6 +67,12 @@ class Engine:
         elif isinstance(event, LoadRegionEvent):
             yield from self._load_region(event)
 
+        elif isinstance(event, SaveNewRegionEvent):
+            yield from self._save_new_region(event)
+
+        elif isinstance(event, SaveRegionEvent):
+            yield from self._save_region(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -189,4 +195,21 @@ class Engine:
         cursor.close()
         for _region in _regions:
             yield RegionLoadedEvent(Region(*_region))
+
+    def _save_new_region(self, event):
+        _region = event.region()
+        try:
+            query = ("INSERT INTO region (region_code, local_code, name, continent_id, country_id) "
+                     "VALUES (?, ?, ?, ?, ?)")
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_region.region_code, _region.local_code, _region.name,
+                                   _region.continent_id, _region.country_id))
+            self._conn.commit()
+            cursor.close()
+            yield RegionSavedEvent(_region)
+        except sqlite3.Error as e:
+            yield SaveRegionFailedEvent(str(e))
+
+    def _save_region(self, event):
+        pass
 
