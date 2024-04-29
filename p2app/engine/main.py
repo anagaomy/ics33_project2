@@ -36,20 +36,18 @@ class Engine:
         """A generator function that processes one event sent from the user interface,
         yielding zero or more events in response."""
 
-        # This is a way to write a generator function that always yields zero values.
-        # You'll want to remove this and replace it with your own code, once you start
-        # writing your engine, but this at least allows the program to run.
         if isinstance(event, QuitInitiatedEvent):
             yield EndApplicationEvent()
         elif isinstance(event, OpenDatabaseEvent):
             yield from self._open_database_event(event)
         elif isinstance(event, CloseDatabaseEvent):
-            self._database_path = None
-            yield DatabaseClosedEvent()
+            yield from self._close_database_event(event)
 
         elif isinstance(event, StartContinentSearchEvent):
             yield from self._start_continent_search(event)
 
+        elif isinstance(event, LoadContinentEvent):
+            yield from self._load_continent(event)
 
         else:
             yield ErrorEvent(f"ERROR: {event}")
@@ -62,12 +60,27 @@ class Engine:
         except Exception as e:
             yield DatabaseOpenFailedEvent(str(e))
 
+    def _close_database_event(self, event):
+        self._database_path = None
+        yield DatabaseClosedEvent()
+
     def _start_continent_search(self, event):
         search_criteria = event.continent_code(), event.name()
-        query = "SELECT * FROM continent WHERE continent_code=? OR name=?"
+        query = "SELECT * FROM continent WHERE continent_code = ? OR name = ?"
         cursor = self._conn.cursor()
         cursor.execute(query, search_criteria)
         _continents = cursor.fetchall()
         cursor.close()
         for continent in _continents:
             yield ContinentSearchResultEvent(Continent(*continent))
+
+    def _load_continent(self, event):
+        continent_id = event.continent_id()
+        query = "SELECT * FROM continent WHERE continent_id = ?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, (continent_id,))
+        _continent = cursor.fetchone()
+        cursor.close()
+        if _continent:
+            yield ContinentLoadedEvent(Continent(*_continent))
+
