@@ -23,8 +23,14 @@ class Engine:
     def __init__(self):
         """Initializes the engine"""
         self._database_path = None
-        # self._conn = sqlite3.connect('airport.db')
-        # self._conn.execute("PRAGMA foreign_keys = ON;")
+        self._conn = None
+
+    def _connect_to_database(self):
+        """Connects to the database and enables foreign key constraints"""
+        if self._conn is not None:
+            self._conn.close()
+        self._conn = sqlite3.connect(self._database_path)
+        self._conn.execute("PRAGMA foreign_keys = ON;")
 
     def process_event(self, event):
         """A generator function that processes one event sent from the user interface,
@@ -36,14 +42,32 @@ class Engine:
         if isinstance(event, QuitInitiatedEvent):
             yield EndApplicationEvent()
         elif isinstance(event, OpenDatabaseEvent):
-            try:
-                self._database_path = event.path()
-                yield DatabaseOpenedEvent(event.path())
-            except Exception as e:
-                yield DatabaseOpenFailedEvent(str(e))
+            yield from self._open_database_event(event)
         elif isinstance(event, CloseDatabaseEvent):
             self._database_path = None
             yield DatabaseClosedEvent()
 
+        elif isinstance(event, StartContinentSearchEvent):
+            yield from self._start_continent_search(event)
+
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
+
+    def _open_database_event(self, event):
+        try:
+            self._database_path = event.path()
+            self._connect_to_database()
+            yield DatabaseOpenedEvent(event.path())
+        except Exception as e:
+            yield DatabaseOpenFailedEvent(str(e))
+
+    def _start_continent_search(self, event):
+        search_criteria = event.continent_code(), event.name()
+        query = "SELECT * FROM continent WHERE continent_code=? OR name=?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, search_criteria)
+        _continents = cursor.fetchall()
+        cursor.close()
+        for continent in _continents:
+            yield ContinentSearchResultEvent(Continent(*continent))
