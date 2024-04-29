@@ -22,15 +22,7 @@ class Engine:
 
     def __init__(self):
         """Initializes the engine"""
-        self._database_path = None
         self._conn = None
-
-    def _connect_to_database(self):
-        """Connects to the database and enables foreign key constraints"""
-        if self._conn is not None:
-            self._conn.close()
-        self._conn = sqlite3.connect(self._database_path)
-        self._conn.execute("PRAGMA foreign_keys = ON;")
 
     def process_event(self, event):
         """A generator function that processes one event sent from the user interface,
@@ -40,10 +32,10 @@ class Engine:
             yield EndApplicationEvent()
 
         elif isinstance(event, OpenDatabaseEvent):
-            yield from self._open_database_event(event)
+            yield from self._open_database(event)
 
         elif isinstance(event, CloseDatabaseEvent):
-            yield from self._close_database_event(event)
+            yield DatabaseClosedEvent()
 
         elif isinstance(event, StartContinentSearchEvent):
             yield from self._start_continent_search(event)
@@ -69,20 +61,20 @@ class Engine:
         elif isinstance(event, SaveCountryEvent):
             yield from self._save_country(event)
 
+        elif isinstance(event, StartRegionSearchEvent):
+            yield from self._start_region_search(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
-    def _open_database_event(self, event):
+    def _open_database(self, event):
         try:
-            self._database_path = event.path()
-            self._connect_to_database()
-            yield DatabaseOpenedEvent(event.path())
+            _path = event.path()
+            self._conn = sqlite3.connect(_path)
+            self._conn.execute("PRAGMA foreign_keys = ON;")
+            yield DatabaseOpenedEvent(_path)
         except sqlite3.Error as e:
             yield DatabaseOpenFailedEvent(str(e))
-
-    def _close_database_event(self, event):
-        self._database_path = None
-        yield DatabaseClosedEvent()
 
     def _start_continent_search(self, event):
         search_criteria = event.continent_code(), event.name()
@@ -175,4 +167,12 @@ class Engine:
         except sqlite3.Error as e:
             yield SaveCountryFailedEvent(str(e))
 
-
+    def _start_region_search(self, event):
+        search_criteria = event.region_code(), event.local_code(), event.name()
+        query = "SELECT * FROM region WHERE region_code = ? OR local_code = ? OR name = ?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, search_criteria)
+        _regions = cursor.fetchall()
+        cursor.close()
+        for region in _regions:
+            yield RegionSearchResultEvent(Region(*region))
