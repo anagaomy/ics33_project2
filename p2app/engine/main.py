@@ -66,6 +66,9 @@ class Engine:
         elif isinstance(event, SaveNewCountryEvent):
             yield from self._save_new_country(event)
 
+        elif isinstance(event, SaveCountryEvent):
+            yield from self._save_country(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -104,7 +107,7 @@ class Engine:
     def _save_new_continent(self, event):
         _continent = event.continent()
         try:
-            query = "INSERT INTO continent (conitent_code, name) VALUES (?, ?)"
+            query = "INSERT INTO continent (continent_code, name) VALUES (?, ?)"
             cursor = self._conn.cursor()
             cursor.execute(query, (_continent.continent_code, _continent.name))
             self._conn.commit()
@@ -148,12 +151,28 @@ class Engine:
     def _save_new_country(self, event):
         _country = event.country()
         try:
-            query = "INSERT INTO country (country_code, name) VALUES (?, ?)"
+            query = "INSERT INTO country (country_code, name, continent_id, wikipedia_link) VALUES (?, ?, ?, ?)"
             cursor = self._conn.cursor()
-            cursor.execute(query, (_country.country_code, _country.name))
+            cursor.execute(query, (_country.country_code, _country.name,
+                                   _country.continent_id, _country.wikipedia_link))
             self._conn.commit()
             cursor.close()
             yield CountrySavedEvent(_country)
         except sqlite3.Error as e:
             yield SaveCountryFailedEvent(str(e))
+
+    def _save_country(self, event):
+        _country = event.country()
+        try:
+            query = ("UPDATE country SET country_code = ?, name = ?, continent_id = ?, wikipedia_link = ?"
+                     "WHERE country_id = ?")
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_country.country_code, _country.name, _country.continent_id,
+                                   _country.wikipedia_link, _country.country_id))
+            self._conn.commit()
+            cursor.close()
+            yield CountrySavedEvent(_country)
+        except sqlite3.Error as e:
+            yield SaveCountryFailedEvent(str(e))
+
 
