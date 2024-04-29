@@ -63,6 +63,9 @@ class Engine:
         elif isinstance(event, LoadCountryEvent):
             yield from self._load_country(event)
 
+        elif isinstance(event, SaveNewCountryEvent):
+            yield from self._save_new_country(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -141,4 +144,16 @@ class Engine:
         cursor.close()
         if _country:
             yield CountryLoadedEvent(Country(*_country))
+
+    def _save_new_country(self, event):
+        _country = event.country()
+        try:
+            query = "INSERT INTO country (country_code, name) VALUES (?, ?)"
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_country.country_code, _country.name))
+            self._conn.commit()
+            cursor.close()
+            yield CountrySavedEvent(_country)
+        except sqlite3.Error as e:
+            yield SaveCountryFailedEvent(str(e))
 
