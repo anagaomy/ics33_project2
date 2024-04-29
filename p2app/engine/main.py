@@ -38,8 +38,10 @@ class Engine:
 
         if isinstance(event, QuitInitiatedEvent):
             yield EndApplicationEvent()
+
         elif isinstance(event, OpenDatabaseEvent):
             yield from self._open_database_event(event)
+
         elif isinstance(event, CloseDatabaseEvent):
             yield from self._close_database_event(event)
 
@@ -51,6 +53,9 @@ class Engine:
 
         elif isinstance(event, SaveNewContinentEvent):
             yield from self._save_new_continent(event)
+
+        elif isinstance(event, SaveContinentEvent):
+            yield from self._save_continent(event)
 
         else:
             yield ErrorEvent(f"ERROR: {event}")
@@ -99,4 +104,15 @@ class Engine:
         except sqlite3.Error as e:
             yield SaveContinentFailedEvent(str(e))
 
-    # def _save_continent(self, event):
+    def _save_continent(self, event):
+        _continent = event.continent()
+        try:
+            query = "UPDATE continent SET continent_code = ?, name = ? WHERE continent_id = ?"
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_continent.continent_code, _continent.name, _continent.continent_id))
+            self._conn.commit()
+            cursor.close()
+            yield ContinentSavedEvent(_continent)
+        except sqlite3.Error as e:
+            yield SaveContinentFailedEvent(str(e))
+
