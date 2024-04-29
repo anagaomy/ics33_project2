@@ -49,6 +49,9 @@ class Engine:
         elif isinstance(event, LoadContinentEvent):
             yield from self._load_continent(event)
 
+        elif isinstance(event, SaveNewContinentEvent):
+            yield from self._save_new_continent(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -57,7 +60,7 @@ class Engine:
             self._database_path = event.path()
             self._connect_to_database()
             yield DatabaseOpenedEvent(event.path())
-        except Exception as e:
+        except sqlite3.Error as e:
             yield DatabaseOpenFailedEvent(str(e))
 
     def _close_database_event(self, event):
@@ -84,3 +87,16 @@ class Engine:
         if _continent:
             yield ContinentLoadedEvent(Continent(*_continent))
 
+    def _save_new_continent(self, event):
+        _continent = event.continent()
+        try:
+            query = "INSERT INTO continent (conitent_code, name) VALUES (?, ?)"
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_continent.continent_code, _continent.name))
+            self._conn.commit()
+            cursor.close()
+            yield ContinentSavedEvent(_continent)
+        except sqlite3.Error as e:
+            yield SaveContinentFailedEvent(str(e))
+
+    # def _save_continent(self, event):
