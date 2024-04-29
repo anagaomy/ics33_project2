@@ -199,7 +199,7 @@ class Engine:
     def _save_new_region(self, event):
         _region = event.region()
         try:
-            query = ("INSERT INTO region (region_code, local_code, name, continent_id, country_id) "
+            query = ("INSERT INTO region (region_code, local_code, name, continent_id, country_id)"
                      "VALUES (?, ?, ?, ?, ?)")
             cursor = self._conn.cursor()
             cursor.execute(query, (_region.region_code, _region.local_code, _region.name,
@@ -211,5 +211,16 @@ class Engine:
             yield SaveRegionFailedEvent(str(e))
 
     def _save_region(self, event):
-        pass
+        _region = event.region()
+        try:
+            query = ("UPDATE region SET region_code = ?, local_code = ?, name = ?, continent_id = ?, country_id = ?"
+                     "WHERE region_id = ?")
+            cursor = self._conn.cursor()
+            cursor.execute(query, (_region.region_code, _region.local_code, _region.name, _region.continent_id,
+                                   _region.country_id, _region.region_id))
+            self._conn.commit()
+            cursor.close()
+            yield RegionSavedEvent(_region)
+        except sqlite3.Error as e:
+            yield SaveRegionFailedEvent(str(e))
 
