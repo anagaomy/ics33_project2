@@ -57,6 +57,12 @@ class Engine:
         elif isinstance(event, SaveContinentEvent):
             yield from self._save_continent(event)
 
+        elif isinstance(event, StartCountrySearchEvent):
+            yield from self._start_country_search(event)
+
+        elif isinstance(event, LoadCountryEvent):
+            yield from self._load_country(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -116,3 +122,15 @@ class Engine:
         except sqlite3.Error as e:
             yield SaveContinentFailedEvent(str(e))
 
+    def _start_country_search(self, event):
+        search_criteria = event.country_code(), event.name()
+        query = "SELECT * FROM country WHERE country_code = ? OR name = ?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, search_criteria)
+        _countries = cursor.fetchall()
+        cursor.close()
+        for country in _countries:
+            yield ContinentSearchResultEvent(Country(*country))
+
+    def _load_country(self, event):
+        pass
