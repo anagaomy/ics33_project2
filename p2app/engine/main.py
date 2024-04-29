@@ -9,6 +9,9 @@
 # which means that YOU WILL DEFINITELY NEED TO MAKE CHANGES TO THIS FILE.
 
 
+import sqlite3
+from p2app.events import *
+
 
 class Engine:
     """An object that represents the application's engine, whose main role is to
@@ -19,8 +22,9 @@ class Engine:
 
     def __init__(self):
         """Initializes the engine"""
-        pass
-
+        self._database_path = None
+        # self._conn = sqlite3.connect('airport.db')
+        # self._conn.execute("PRAGMA foreign_keys = ON;")
 
     def process_event(self, event):
         """A generator function that processes one event sent from the user interface,
@@ -29,4 +33,17 @@ class Engine:
         # This is a way to write a generator function that always yields zero values.
         # You'll want to remove this and replace it with your own code, once you start
         # writing your engine, but this at least allows the program to run.
-        yield from ()
+        if isinstance(event, QuitInitiatedEvent):
+            yield EndApplicationEvent()
+        elif isinstance(event, OpenDatabaseEvent):
+            try:
+                self._database_path = event.path()
+                yield DatabaseOpenedEvent(event.path())
+            except Exception as e:
+                yield DatabaseOpenFailedEvent(str(e))
+        elif isinstance(event, CloseDatabaseEvent):
+            self._database_path = None
+            yield DatabaseClosedEvent()
+
+        else:
+            yield ErrorEvent(f"ERROR: {event}")
