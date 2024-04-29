@@ -64,6 +64,9 @@ class Engine:
         elif isinstance(event, StartRegionSearchEvent):
             yield from self._start_region_search(event)
 
+        elif isinstance(event, LoadRegionEvent):
+            yield from self._load_region(event)
+
         else:
             yield ErrorEvent(f"ERROR: {event}")
 
@@ -176,3 +179,14 @@ class Engine:
         cursor.close()
         for region in _regions:
             yield RegionSearchResultEvent(Region(*region))
+
+    def _load_region(self, event):
+        region_id = event.region_id()
+        query = "SELECT * FROM region WHERE region_id = ?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, (region_id,))
+        _regions = cursor.fetchall()
+        cursor.close()
+        for _region in _regions:
+            yield RegionLoadedEvent(Region(*_region))
+
