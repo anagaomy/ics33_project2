@@ -130,7 +130,15 @@ class Engine:
         _countries = cursor.fetchall()
         cursor.close()
         for country in _countries:
-            yield ContinentSearchResultEvent(Country(*country))
+            yield CountrySearchResultEvent(Country(*country))
 
     def _load_country(self, event):
-        pass
+        country_id = event.country_id()
+        query = "SELECT * FROM country WHERE country_id = ?"
+        cursor = self._conn.cursor()
+        cursor.execute(query, (country_id,))
+        _country = cursor.fetchone()
+        cursor.close()
+        if _country:
+            yield CountryLoadedEvent(Country(*_country))
+
