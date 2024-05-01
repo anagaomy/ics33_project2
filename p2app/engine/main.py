@@ -23,6 +23,10 @@ class Engine:
     def __init__(self):
         """Initializes the engine"""
         self._conn = None
+        self.path = None
+        # self._open_database(OpenDatabaseEvent)
+        # self._conn = sqlite3.connect(self.path)
+        # self._conn.execute("PRAGMA foreign_keys = ON;")
 
     def process_event(self, event):
         """A generator function that processes one event sent from the user interface,
@@ -78,16 +82,21 @@ class Engine:
 
     def _open_database(self, event):
         try:
-            _path = event.path()
-            self._conn = sqlite3.connect(_path)
+            self.path = event.path()
+            self._conn = sqlite3.connect(self.path)
             self._conn.execute("PRAGMA foreign_keys = ON;")
-            yield DatabaseOpenedEvent(_path)
+            yield DatabaseOpenedEvent(self.path)
         except sqlite3.Error as e:
             yield DatabaseOpenFailedEvent(str(e))
 
     def _start_continent_search(self, event):
         search_criteria = event.continent_code(), event.name()
-        query = "SELECT * FROM continent WHERE continent_code = ? OR name = ?"
+
+        if event.continent_code() is None or event.name() is None:
+            query = "SELECT * FROM continent WHERE continent_code = ? OR name = ?"
+        else:
+            query = "SELECT * FROM continent WHERE continent_code = ? AND name = ?"
+
         cursor = self._conn.cursor()
         cursor.execute(query, search_criteria)
         _continents = cursor.fetchall()
@@ -131,7 +140,12 @@ class Engine:
 
     def _start_country_search(self, event):
         search_criteria = event.country_code(), event.name()
-        query = "SELECT * FROM country WHERE country_code = ? OR name = ?"
+
+        if event.country_code() is None or event.name() is None:
+            query = "SELECT * FROM country WHERE country_code = ? OR name = ?"
+        else:
+            query = "SELECT * FROM country WHERE country_code = ? AND name = ?"
+
         cursor = self._conn.cursor()
         cursor.execute(query, search_criteria)
         _countries = cursor.fetchall()
@@ -177,8 +191,25 @@ class Engine:
             yield SaveCountryFailedEvent(str(e))
 
     def _start_region_search(self, event):
-        search_criteria = event.region_code(), event.local_code(), event.name()
-        query = "SELECT * FROM region WHERE region_code = ? OR local_code = ? OR name = ?"
+        search_criteria = []
+        conditions = []
+
+        if event.region_code() is not None:
+            search_criteria.append(event.region_code())
+            conditions.append("region_code = ?")
+        if event.local_code() is not None:
+            search_criteria.append(event.local_code())
+            conditions.append("local_code = ?")
+        if event.name() is not None:
+            search_criteria.append(event.name())
+            conditions.append("name = ?")
+
+        where_clause = " AND ".join(conditions)
+        if where_clause:
+            query = f"SELECT * FROM region WHERE {where_clause}"
+        else:
+            query = "SELECT * FROM region"
+
         cursor = self._conn.cursor()
         cursor.execute(query, search_criteria)
         _regions = cursor.fetchall()
@@ -223,4 +254,3 @@ class Engine:
             yield RegionSavedEvent(_region)
         except sqlite3.Error as e:
             yield SaveRegionFailedEvent(str(e))
-
