@@ -53,12 +53,15 @@ class Engine:
             yield from self._continent_manager.start_continent_search(event)
 
         elif isinstance(event, LoadContinentEvent):
+            self._continent_manager = ContinentManager(self._conn)
             yield from self._continent_manager.load_continent(event)
 
         elif isinstance(event, SaveNewContinentEvent):
+            self._continent_manager = ContinentManager(self._conn)
             yield from self._continent_manager.save_new_continent(event)
 
         elif isinstance(event, SaveContinentEvent):
+            self._continent_manager = ContinentManager(self._conn)
             yield from self._continent_manager.save_continent(event)
 
         elif isinstance(event, StartCountrySearchEvent):
@@ -66,12 +69,15 @@ class Engine:
             yield from self._country_manager.start_country_search(event)
 
         elif isinstance(event, LoadCountryEvent):
+            self._country_manager = CountryManager(self._conn)
             yield from self._country_manager.load_country(event)
 
         elif isinstance(event, SaveNewCountryEvent):
+            self._country_manager = CountryManager(self._conn)
             yield from self._country_manager.save_new_country(event)
 
         elif isinstance(event, SaveCountryEvent):
+            self._country_manager = CountryManager(self._conn)
             yield from self._country_manager.save_country(event)
 
         elif isinstance(event, StartRegionSearchEvent):
@@ -79,12 +85,15 @@ class Engine:
             yield from self._region_manager.start_region_search(event)
 
         elif isinstance(event, LoadRegionEvent):
+            self._region_manager = RegionManager(self._conn)
             yield from self._region_manager.load_region(event)
 
         elif isinstance(event, SaveNewRegionEvent):
+            self._region_manager = RegionManager(self._conn)
             yield from self._region_manager.save_new_region(event)
 
         elif isinstance(event, SaveRegionEvent):
+            self._region_manager = RegionManager(self._conn)
             yield from self._region_manager.save_region(event)
 
         else:
