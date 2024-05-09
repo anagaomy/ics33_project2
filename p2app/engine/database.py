@@ -18,3 +18,9 @@ class DatabaseManager:
             yield DatabaseOpenedEvent(self.path)
         except sqlite3.Error as e:
             yield DatabaseOpenFailedEvent(str(e))
+
+    def connection(self):
+        return self._conn
+
+    def database_path(self):
+        return self.path

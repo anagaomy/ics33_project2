@@ -6,9 +6,8 @@ from p2app.events import *
 
 
 class ContinentManager:
-    def __init__(self):
-        self._conn = None
-        self.path = None
+    def __init__(self, connection):
+        self._conn = connection
 
     def start_continent_search(self, event):
         search_criteria = event.continent_code(), event.name()

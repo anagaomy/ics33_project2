@@ -26,10 +26,12 @@ class Engine:
 
     def __init__(self):
         """Initializes the engine"""
+        self._conn = None
+        self.path = None
         self._db_manager = DatabaseManager()
-        self._continent_manager = ContinentManager()
-        self._country_manager = CountryManager()
-        self._region_manager = RegionManager()
+        self._continent_manager = None
+        self._country_manager = None
+        self._region_manager = None
 
     def process_event(self, event):
         """A generator function that processes one event sent from the user interface,
@@ -40,11 +42,14 @@ class Engine:
 
         elif isinstance(event, OpenDatabaseEvent):
             yield from self._db_manager.open_database(event)
+            self._conn = self._db_manager.connection()
+            self.path = self._db_manager.database_path()
 
         elif isinstance(event, CloseDatabaseEvent):
             yield DatabaseClosedEvent()
 
         elif isinstance(event, StartContinentSearchEvent):
+            self._continent_manager = ContinentManager(self._conn)
             yield from self._continent_manager.start_continent_search(event)
 
         elif isinstance(event, LoadContinentEvent):
@@ -57,6 +62,7 @@ class Engine:
             yield from self._continent_manager.save_continent(event)
 
         elif isinstance(event, StartCountrySearchEvent):
+            self._country_manager = CountryManager(self._conn)
             yield from self._country_manager.start_country_search(event)
 
         elif isinstance(event, LoadCountryEvent):
@@ -69,6 +75,7 @@ class Engine:
             yield from self._country_manager.save_country(event)
 
         elif isinstance(event, StartRegionSearchEvent):
+            self._region_manager = RegionManager(self._conn)
             yield from self._region_manager.start_region_search(event)
 
         elif isinstance(event, LoadRegionEvent):
